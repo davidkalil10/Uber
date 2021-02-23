@@ -1,4 +1,7 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:uber/model/Usuario.dart';
+import 'package:uber/telas/Cadastro.dart';
 
 class Home extends StatefulWidget {
   @override
@@ -6,8 +9,54 @@ class Home extends StatefulWidget {
 }
 
 class _HomeState extends State<Home> {
-  TextEditingController _controllerEmail = TextEditingController();
-  TextEditingController _controllerSenha = TextEditingController();
+  TextEditingController _controllerEmail = TextEditingController(text: "dmmd10@hotmail.com");
+  TextEditingController _controllerSenha = TextEditingController(text: "123456");
+  String _mensagemErro = "";
+
+  _validarCampos(){
+
+    //Recuperar dados dos campos
+    String email = _controllerEmail.text;
+    String senha = _controllerSenha.text;
+
+    //Validar Campos
+
+    if (email.isNotEmpty && email.contains("@")){
+
+      if(senha.isNotEmpty && senha.length >=6){
+        Usuario usuario = Usuario();
+        usuario.email = email;
+        usuario.senha = senha;
+
+        _logarUsuario(usuario);
+
+      }else{
+        setState(() {
+          _mensagemErro = "Preencha uma senha com 6 caractéres";
+        });
+      }
+
+    }else {
+      setState(() {
+        _mensagemErro = "Preencha um email válido";
+      });
+    }
+  }
+
+  _logarUsuario( Usuario usuario){
+    FirebaseAuth auth = FirebaseAuth.instance;
+    auth.signInWithEmailAndPassword(
+        email: usuario.email,
+        password: usuario.senha).
+    then((firebaseUser){
+      
+      Navigator.pushReplacementNamed(context, "/painel-passageiro");
+      
+    }).catchError((error){
+      _mensagemErro = "Erro ao autenticar usuário, verifica e-mail e senha!";
+    });
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -66,7 +115,9 @@ class _HomeState extends State<Home> {
                     style: ElevatedButton.styleFrom(
                         primary: Color(0xff1ebbd8),
                         padding: EdgeInsets.fromLTRB(32, 16, 32, 16)),
-                    onPressed: () {},
+                    onPressed: () {
+                      _validarCampos();
+                    },
                   ),
                 ),
                 Center(
@@ -75,7 +126,11 @@ class _HomeState extends State<Home> {
                         "Não tem conta? Cadastre-se!",
                       style: TextStyle(color: Colors.white),
                     ),
-                    onTap: (){},
+                    onTap: (){
+                      Navigator.pushNamed(
+                          context,
+                          "/cadastro");
+                    },
                   ),
 
                 ),
@@ -83,7 +138,7 @@ class _HomeState extends State<Home> {
                   padding: EdgeInsets.only(top: 16),
                   child: Center(
                     child: Text(
-                        "Erro",
+                      _mensagemErro,
                       style: TextStyle(color: Colors.red, fontSize: 20),
                     ),
                   ),
