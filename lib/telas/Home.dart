@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:uber/model/Usuario.dart';
@@ -12,6 +13,7 @@ class _HomeState extends State<Home> {
   TextEditingController _controllerEmail = TextEditingController(text: "dmmd10@hotmail.com");
   TextEditingController _controllerSenha = TextEditingController(text: "123456");
   String _mensagemErro = "";
+  bool _carregando = false;
 
   _validarCampos(){
 
@@ -44,19 +46,65 @@ class _HomeState extends State<Home> {
   }
 
   _logarUsuario( Usuario usuario){
+
+    setState(() {
+      _carregando = true;
+    });
+
     FirebaseAuth auth = FirebaseAuth.instance;
     auth.signInWithEmailAndPassword(
         email: usuario.email,
         password: usuario.senha).
     then((firebaseUser){
-      
-      Navigator.pushReplacementNamed(context, "/painel-passageiro");
+
+      _redirecionaPainelPorTipoUsuario(firebaseUser.user.uid);
       
     }).catchError((error){
       _mensagemErro = "Erro ao autenticar usuário, verifica e-mail e senha!";
     });
   }
 
+  _redirecionaPainelPorTipoUsuario(String idUsuario) async{
+
+    FirebaseFirestore db = FirebaseFirestore.instance;
+
+    //Unica consulta, pega dados, processo encerrado
+    DocumentSnapshot snapshot = await db.collection("usuarios")
+    .doc(idUsuario).get();
+
+    Map<String, dynamic> dados = snapshot.data();
+
+    setState(() {
+      _carregando = false;
+    });
+
+    if (dados["tipoUsuario"] == "Passageiro"){
+      Navigator.pushReplacementNamed(context, "/painel-passageiro");
+    }else if(dados["tipoUsuario"] == "Motorista"){
+      Navigator.pushReplacementNamed(context, "/painel-motorista");
+    }else{
+
+    }
+  }
+
+  _verificaUsuarioLogado() async{
+    FirebaseAuth auth = FirebaseAuth.instance;
+
+    User usuarioLogado = await auth.currentUser;
+    if(usuarioLogado != null){
+      String idUsuario = usuarioLogado.uid;
+      _redirecionaPainelPorTipoUsuario(idUsuario);
+    }
+
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    _verificaUsuarioLogado();
+
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -134,6 +182,9 @@ class _HomeState extends State<Home> {
                   ),
 
                 ),
+                _carregando
+                    ? Center(child: CircularProgressIndicator(backgroundColor: Colors.white,),)
+                    : Container(),
                 Padding(
                   padding: EdgeInsets.only(top: 16),
                   child: Center(
