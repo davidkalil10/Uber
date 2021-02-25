@@ -30,6 +30,13 @@ class _PainelPassageiroState extends State<PainelPassageiro> {
       target: LatLng(-23.593390510783067, -46.68761592818432), zoom: 16);
 
   Set<Marker> _marcadores = {};
+  String _idRequisicao = "";
+
+  //Controles para exibição na tela
+  bool _exibirCaixaEnderecoDestino = true;
+  String _textoBotao = "Chamar Uber";
+  Color _corBotao = Color(0xff1ebbd8);
+  Function _funcaoBotao;
 
   _escolhaMenuItem(String escolha) {
     switch (escolha) {
@@ -164,15 +171,98 @@ class _PainelPassageiroState extends State<PainelPassageiro> {
     }
   }
 
-  _salvarRequisicao(Destino destino)async {
+  _salvarRequisicao(Destino destino) async {
     Usuario passageiro = await UsuarioFirebase.getDadosUsuarioLogado();
     Requisicao requisicao = Requisicao();
     requisicao.destino = destino;
-    requisicao.passageiro =  passageiro;
+    requisicao.passageiro = passageiro;
     requisicao.status = StatusRequisicao.AGUARDANDO;
 
     FirebaseFirestore db = FirebaseFirestore.instance;
-    db.collection("requisicoes").add(requisicao.toMap());
+
+    //Salvar requisição
+    db.collection("requisicoes").doc(requisicao.id).set(requisicao.toMap());
+
+    //Salvar requisicao ativa
+    Map<String, dynamic> dadosRequisicaoAtiva = {};
+    dadosRequisicaoAtiva["id_requisicao"] = requisicao.id;
+    dadosRequisicaoAtiva["id_usuario"] = passageiro.idUsuario;
+    dadosRequisicaoAtiva["status"] = StatusRequisicao.AGUARDANDO;
+
+    db
+        .collection("requisicao_ativa")
+        .doc(passageiro.idUsuario)
+        .set(dadosRequisicaoAtiva);
+  }
+
+  _alterarBotaoPrincipal(String texto, Color cor, Function funcao) {
+    setState(() {
+      _textoBotao = texto;
+      _corBotao = cor;
+      _funcaoBotao = funcao;
+    });
+  }
+
+  _statusUberNaoChamado() {
+    _exibirCaixaEnderecoDestino = true;
+    _alterarBotaoPrincipal("Chamar Uber", Color(0xff1ebbd8), () {
+      _chamarUber();
+    });
+  }
+
+  _statusAguardando() {
+    _exibirCaixaEnderecoDestino = false;
+    _alterarBotaoPrincipal("Cancelar", Colors.red, () {
+      _cancelarUber();
+    });
+  }
+
+  _cancelarUber() async {
+    User firebaseUser = await UsuarioFirebase.getUsuarioAtual();
+    FirebaseFirestore db = FirebaseFirestore.instance;
+    db.collection("requisicoes")
+        .doc(_idRequisicao)
+        .update({
+        "status" : StatusRequisicao.CANCELADA
+    }).then((_){
+      db.collection("requisicao_ativa").doc(firebaseUser.uid).delete();
+      _statusUberNaoChamado();
+    });
+
+
+  }
+
+  _adicionarListenerRequisicaoAtiva() async {
+    User firebaseUser = await UsuarioFirebase.getUsuarioAtual();
+    FirebaseFirestore db = FirebaseFirestore.instance;
+
+    await db
+        .collection("requisicao_ativa")
+        .doc(firebaseUser.uid)
+        .snapshots()
+        .listen((snapshot) {
+      if (snapshot.data() != null) {
+        Map<String, dynamic> dados = snapshot.data();
+        String status = dados["status"];
+        _idRequisicao = dados["id_requisicao"];
+
+        switch (status) {
+          case StatusRequisicao.AGUARDANDO:
+            _statusAguardando();
+            break;
+          case StatusRequisicao.A_CAMINHO:
+            break;
+          case StatusRequisicao.VIAGEM:
+            break;
+          case StatusRequisicao.FINALIZADA:
+            break;
+        }
+      } else {
+        _statusUberNaoChamado();
+      }
+    });
+
+    _statusUberNaoChamado();
   }
 
   @override
@@ -180,6 +270,9 @@ class _PainelPassageiroState extends State<PainelPassageiro> {
     super.initState();
     _recuperarUltimaLocalizacaoConhecida();
     _adicionarListenerLocalizacao();
+
+    //adicionar listener para requisição ativa
+    _adicionarListenerRequisicaoAtiva();
   }
 
   @override
@@ -211,68 +304,76 @@ class _PainelPassageiroState extends State<PainelPassageiro> {
               myLocationButtonEnabled: false,
               markers: _marcadores,
             ),
-            Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: Padding(
-                  padding: EdgeInsets.all(10),
-                  child: Container(
-                    height: 50,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey),
-                        borderRadius: BorderRadius.circular(3),
-                        color: Colors.white),
-                    child: TextField(
-                      readOnly: true,
-                      decoration: InputDecoration(
-                          icon: Container(
-                            margin: EdgeInsets.only(left: 10),
-                            width: 10,
-                            height: 30,
-                            child: Icon(
-                              Icons.location_on,
-                              color: Colors.green,
+            Visibility(
+                visible: _exibirCaixaEnderecoDestino,
+                child: Stack(
+                  children: [
+                    Positioned(
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        child: Padding(
+                          padding: EdgeInsets.all(10),
+                          child: Container(
+                            height: 50,
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey),
+                                borderRadius: BorderRadius.circular(3),
+                                color: Colors.white),
+                            child: TextField(
+                              readOnly: true,
+                              decoration: InputDecoration(
+                                  icon: Container(
+                                    margin: EdgeInsets.only(left: 10),
+                                    width: 10,
+                                    height: 30,
+                                    child: Icon(
+                                      Icons.location_on,
+                                      color: Colors.green,
+                                    ),
+                                  ),
+                                  hintText: "Meu Local",
+                                  border: InputBorder.none,
+                                  contentPadding:
+                                      EdgeInsets.only(left: 15, top: 0)),
                             ),
                           ),
-                          hintText: "Meu Local",
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.only(left: 15, top: 0)),
-                    ),
-                  ),
-                )),
-            Positioned(
-                top: 55,
-                left: 0,
-                right: 0,
-                child: Padding(
-                  padding: EdgeInsets.all(10),
-                  child: Container(
-                    height: 50,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey),
-                        borderRadius: BorderRadius.circular(3),
-                        color: Colors.white),
-                    child: TextField(
-                      controller: _controllerDestino,
-                      readOnly: false,
-                      decoration: InputDecoration(
-                          icon: Container(
-                            margin: EdgeInsets.only(left: 10),
-                            width: 10,
-                            height: 30,
-                            child: Icon(
-                              Icons.local_taxi,
-                              color: Colors.black,
+                        )),
+                    Positioned(
+                        top: 55,
+                        left: 0,
+                        right: 0,
+                        child: Padding(
+                          padding: EdgeInsets.all(10),
+                          child: Container(
+                            height: 50,
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey),
+                                borderRadius: BorderRadius.circular(3),
+                                color: Colors.white),
+                            child: TextField(
+                              controller: _controllerDestino,
+                              readOnly: false,
+                              decoration: InputDecoration(
+                                  icon: Container(
+                                    margin: EdgeInsets.only(left: 10),
+                                    width: 10,
+                                    height: 30,
+                                    child: Icon(
+                                      Icons.local_taxi,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                  hintText: "Digite o destino",
+                                  border: InputBorder.none,
+                                  contentPadding:
+                                      EdgeInsets.only(left: 15, top: 0)),
                             ),
                           ),
-                          hintText: "Digite o destino",
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.only(left: 15, top: 0)),
-                    ),
-                  ),
+                        )),
+                  ],
                 )),
             Positioned(
               right: 0,
@@ -284,15 +385,13 @@ class _PainelPassageiroState extends State<PainelPassageiro> {
                     : EdgeInsets.all(10),
                 child: ElevatedButton(
                   child: Text(
-                    "Chamar Uber",
+                    _textoBotao,
                     style: TextStyle(color: Colors.white, fontSize: 20),
                   ),
                   style: ElevatedButton.styleFrom(
-                      primary: Color(0xff1ebbd8),
+                      primary: _corBotao,
                       padding: EdgeInsets.fromLTRB(32, 16, 32, 16)),
-                  onPressed: () {
-                    _chamarUber();
-                  },
+                  onPressed: _funcaoBotao,
                 ),
               ),
             )
