@@ -31,6 +31,7 @@ class _PainelPassageiroState extends State<PainelPassageiro> {
 
   Set<Marker> _marcadores = {};
   String _idRequisicao = "";
+  Position _localPassageiro;
 
   //Controles para exibição na tela
   bool _exibirCaixaEnderecoDestino = true;
@@ -70,6 +71,7 @@ class _PainelPassageiroState extends State<PainelPassageiro> {
       _exibirMarcadorPassageiro(position);
       _cameraPosition = CameraPosition(
           target: LatLng(position.latitude, position.longitude), zoom: 16);
+      _localPassageiro = position;
       _movimentarCamera(_cameraPosition);
     });
   }
@@ -82,7 +84,7 @@ class _PainelPassageiroState extends State<PainelPassageiro> {
         _exibirMarcadorPassageiro(position);
         _cameraPosition = CameraPosition(
             target: LatLng(position.latitude, position.longitude), zoom: 16);
-
+        _localPassageiro = position;
         _movimentarCamera(_cameraPosition);
       }
     });
@@ -173,6 +175,9 @@ class _PainelPassageiroState extends State<PainelPassageiro> {
 
   _salvarRequisicao(Destino destino) async {
     Usuario passageiro = await UsuarioFirebase.getDadosUsuarioLogado();
+    passageiro.latitude = _localPassageiro.latitude;
+    passageiro.longitude = _localPassageiro.longitude;
+
     Requisicao requisicao = Requisicao();
     requisicao.destino = destino;
     requisicao.passageiro = passageiro;
@@ -217,6 +222,13 @@ class _PainelPassageiroState extends State<PainelPassageiro> {
     });
   }
 
+  _statusACaminho() {
+    _exibirCaixaEnderecoDestino = false;
+    _alterarBotaoPrincipal("Motorista a caminho", Colors.grey, () {
+      //_cancelarUber();
+    });
+  }
+
   _cancelarUber() async {
     User firebaseUser = await UsuarioFirebase.getUsuarioAtual();
     FirebaseFirestore db = FirebaseFirestore.instance;
@@ -251,6 +263,7 @@ class _PainelPassageiroState extends State<PainelPassageiro> {
             _statusAguardando();
             break;
           case StatusRequisicao.A_CAMINHO:
+            _statusACaminho();
             break;
           case StatusRequisicao.VIAGEM:
             break;
