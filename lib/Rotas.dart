@@ -28,7 +28,7 @@ class Rotas {
         return MaterialPageRoute(
             builder: (_)=> PainelPassageiro()
         );
-        case "/corrida":
+      case "/corrida":
         return MaterialPageRoute(
             builder: (_)=> Corrida(args)
         );
@@ -38,16 +38,16 @@ class Rotas {
   }
 
   static Route<dynamic>_erroRota(){
-      return MaterialPageRoute(
-          builder: (_) {
-            return Scaffold(
-              appBar: AppBar(title: Text("TEla não encontrada!"),),
-              body: Center(
-                child: Text("Tela não encontrada!"),
-              ),
-            );
-          }
-      );
+    return MaterialPageRoute(
+        builder: (_) {
+          return Scaffold(
+            appBar: AppBar(title: Text("TEla não encontrada!"),),
+            body: Center(
+              child: Text("Tela não encontrada!"),
+            ),
+          );
+        }
+    );
   }
 
 }
