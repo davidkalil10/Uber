@@ -32,6 +32,7 @@ class _PainelPassageiroState extends State<PainelPassageiro> {
   Set<Marker> _marcadores = {};
   String _idRequisicao = "";
   Position _localPassageiro;
+  Map<String, dynamic> _dadosRequisicao;
 
   //Controles para exibição na tela
   bool _exibirCaixaEnderecoDestino = true;
@@ -68,11 +69,23 @@ class _PainelPassageiroState extends State<PainelPassageiro> {
             desiredAccuracy: locationOptions.accuracy,
             distanceFilter: locationOptions.distanceFilter)
         .listen((Position position) {
-      _exibirMarcadorPassageiro(position);
-      _cameraPosition = CameraPosition(
-          target: LatLng(position.latitude, position.longitude), zoom: 16);
-      _localPassageiro = position;
-      _movimentarCamera(_cameraPosition);
+      if (_idRequisicao != null && _idRequisicao.isNotEmpty) {
+        //Atualiza local do passageiro
+        print("passei aqui0!!!!");
+        UsuarioFirebase.atualizarDadosLocalizacao(
+            _idRequisicao, position.latitude, position.longitude);
+      } else if (position != null) {
+        print("ainda to por aqui");
+        setState(() {
+          print("ainda to por aqui");
+          _localPassageiro = position;
+          _movimentarCamera(CameraPosition(
+            target: LatLng(position.latitude,position.longitude),
+            zoom: 16
+          ));
+          _exibirMarcadorPassageiro(position);
+        });
+      }
     });
   }
 
@@ -80,13 +93,7 @@ class _PainelPassageiroState extends State<PainelPassageiro> {
     Position position = await Geolocator.getLastKnownPosition();
 
     setState(() {
-      if (position != null) {
-        _exibirMarcadorPassageiro(position);
-        _cameraPosition = CameraPosition(
-            target: LatLng(position.latitude, position.longitude), zoom: 16);
-        _localPassageiro = position;
-        _movimentarCamera(_cameraPosition);
-      }
+      if (position != null) {}
     });
   }
 
@@ -198,6 +205,9 @@ class _PainelPassageiroState extends State<PainelPassageiro> {
         .collection("requisicao_ativa")
         .doc(passageiro.idUsuario)
         .set(dadosRequisicaoAtiva);
+
+    //chama método pra alterar interface para o status aguardando
+    _statusAguardando();
   }
 
   _alterarBotaoPrincipal(String texto, Color cor, Function funcao) {
@@ -210,9 +220,20 @@ class _PainelPassageiroState extends State<PainelPassageiro> {
 
   _statusUberNaoChamado() {
     _exibirCaixaEnderecoDestino = true;
+    _idRequisicao = null;
     _alterarBotaoPrincipal("Chamar Uber", Color(0xff1ebbd8), () {
       _chamarUber();
     });
+
+    Position position = Position(
+      latitude: _localPassageiro.latitude,
+      longitude: _localPassageiro.longitude,
+    );
+
+    _exibirMarcadorPassageiro(position);
+    CameraPosition cameraPosition = CameraPosition(
+        target: LatLng(position.latitude, position.longitude), zoom: 16);
+    _movimentarCamera(cameraPosition);
   }
 
   _statusAguardando() {
@@ -220,6 +241,21 @@ class _PainelPassageiroState extends State<PainelPassageiro> {
     _alterarBotaoPrincipal("Cancelar", Colors.red, () {
       _cancelarUber();
     });
+
+    print("karai: "+_dadosRequisicao["passageiro"]["latitude"].toString());
+    double passageiroLat = _dadosRequisicao["passageiro"]["latitude"];
+    double passageiroLon = _dadosRequisicao["passageiro"]["longitude"];
+    print("to na lat recuperada");
+
+    Position position = Position(
+      latitude: passageiroLat,
+      longitude: passageiroLon,
+    );
+
+    _exibirMarcadorPassageiro(position);
+    CameraPosition cameraPosition = CameraPosition(
+        target: LatLng(position.latitude, position.longitude), zoom: 16);
+    _movimentarCamera(cameraPosition);
   }
 
   _statusACaminho() {
@@ -232,31 +268,49 @@ class _PainelPassageiroState extends State<PainelPassageiro> {
   _cancelarUber() async {
     User firebaseUser = await UsuarioFirebase.getUsuarioAtual();
     FirebaseFirestore db = FirebaseFirestore.instance;
-    db.collection("requisicoes")
+    print(_idRequisicao);
+    db
+        .collection("requisicoes")
         .doc(_idRequisicao)
-        .update({
-        "status" : StatusRequisicao.CANCELADA
-    }).then((_){
+        .update({"status": StatusRequisicao.CANCELADA}).then((_) {
       db.collection("requisicao_ativa").doc(firebaseUser.uid).delete();
       _statusUberNaoChamado();
     });
 
-
   }
 
-  _adicionarListenerRequisicaoAtiva() async {
+  _recuperarRequisicaoAtiva() async {
     User firebaseUser = await UsuarioFirebase.getUsuarioAtual();
     FirebaseFirestore db = FirebaseFirestore.instance;
 
+    DocumentSnapshot documentSnapshot =
+        await db.collection("requisicao_ativa").doc(firebaseUser.uid).get();
+
+    if (documentSnapshot.data() != null) {
+      Map<String, dynamic> dados = documentSnapshot.data();
+      _idRequisicao = dados["id_requisicao"];
+      print("peguei o id");
+      _adicionarListenerRequisicao(_idRequisicao);
+      print("id é "+_idRequisicao);
+    } else {
+      _statusUberNaoChamado();
+    }
+  }
+
+  _adicionarListenerRequisicao(String idRequisicao) async {
+    FirebaseFirestore db = FirebaseFirestore.instance;
     await db
-        .collection("requisicao_ativa")
-        .doc(firebaseUser.uid)
+        .collection("requisicoes")
+        .doc(idRequisicao)
         .snapshots()
         .listen((snapshot) {
       if (snapshot.data() != null) {
         Map<String, dynamic> dados = snapshot.data();
+
+        _dadosRequisicao = dados;
         String status = dados["status"];
-        _idRequisicao = dados["id_requisicao"];
+        _idRequisicao = dados["id"];
+        print("to aqui3:" +status);
 
         switch (status) {
           case StatusRequisicao.AGUARDANDO:
@@ -270,22 +324,19 @@ class _PainelPassageiroState extends State<PainelPassageiro> {
           case StatusRequisicao.FINALIZADA:
             break;
         }
-      } else {
-        _statusUberNaoChamado();
       }
     });
-
-    _statusUberNaoChamado();
   }
 
   @override
   void initState() {
     super.initState();
-    _recuperarUltimaLocalizacaoConhecida();
+    //adicionar listener para requisição ativa
+    _recuperarRequisicaoAtiva();
+
+    //_recuperarUltimaLocalizacaoConhecida();
     _adicionarListenerLocalizacao();
 
-    //adicionar listener para requisição ativa
-    _adicionarListenerRequisicaoAtiva();
   }
 
   @override
