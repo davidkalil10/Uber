@@ -82,6 +82,7 @@ class _PainelPassageiroState extends State<PainelPassageiro> {
     setState(() {
       if (position != null) {
         _exibirMarcadorPassageiro(position);
+
         _cameraPosition = CameraPosition(
             target: LatLng(position.latitude, position.longitude), zoom: 16);
         _localPassageiro = position;
@@ -244,15 +245,33 @@ class _PainelPassageiroState extends State<PainelPassageiro> {
 
   }
 
-  _adicionarListenerRequisicaoAtiva() async {
+  _recuperaRequisicaoAtiva() async {
     User firebaseUser = await UsuarioFirebase.getUsuarioAtual();
     FirebaseFirestore db = FirebaseFirestore.instance;
 
-    await db
+   DocumentSnapshot documentSnapshot =  await db
         .collection("requisicao_ativa")
         .doc(firebaseUser.uid)
-        .snapshots()
-        .listen((snapshot) {
+        .get();
+
+   if(documentSnapshot.data() != null ){
+
+     Map<String, dynamic> dados = documentSnapshot.data();
+     _idRequisicao = dados["id_requisicao"];
+     _adicionarListenerRequisicao(_idRequisicao);
+   }else {
+     _statusUberNaoChamado();
+   }
+
+  }
+
+  _adicionarListenerRequisicao(String idRequisicao) async{
+
+    FirebaseFirestore db = FirebaseFirestore.instance;
+    await db
+        .collection("requisicoes")
+        .doc(idRequisicao).snapshots().listen((snapshot) {
+
       if (snapshot.data() != null) {
         Map<String, dynamic> dados = snapshot.data();
         String status = dados["status"];
@@ -270,22 +289,23 @@ class _PainelPassageiroState extends State<PainelPassageiro> {
           case StatusRequisicao.FINALIZADA:
             break;
         }
-      } else {
-        _statusUberNaoChamado();
       }
+
     });
 
-    _statusUberNaoChamado();
+
   }
 
   @override
   void initState() {
     super.initState();
+    //adicionar listener para requisição ativa
+    _recuperaRequisicaoAtiva();
+
     _recuperarUltimaLocalizacaoConhecida();
     _adicionarListenerLocalizacao();
 
-    //adicionar listener para requisição ativa
-    _adicionarListenerRequisicaoAtiva();
+
   }
 
   @override
