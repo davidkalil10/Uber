@@ -314,8 +314,11 @@ class _CorridaState extends State<Corrida> {
   _aceitarCorrida() async {
     //Recuperar dados do motorista
     Usuario motorista = await UsuarioFirebase.getDadosUsuarioLogado();
-    motorista.latitude = _dadosRequisicao["motorista"]["latitude"];
-    motorista.longitude = _dadosRequisicao["motorista"]["longitude"];
+   // motorista.latitude = _dadosRequisicao["motorista"]["latitude"];
+   // motorista.longitude = _dadosRequisicao["motorista"]["longitude"];
+
+    motorista.latitude = _localMotorista.latitude;
+    motorista.longitude = _localMotorista.longitude;
 
     FirebaseFirestore db = FirebaseFirestore.instance;
     String idRequisicao = _dadosRequisicao["id"];
