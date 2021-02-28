@@ -23,6 +23,7 @@ class Usuario {
       "tipoUsuario": this.tipoUsuario,
       "latitude": this.latitude,
       "longitude": this.longitude,
+      "idUsuario" : this.idUsuario
     };
     return map;
   }

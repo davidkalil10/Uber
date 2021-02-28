@@ -33,6 +33,8 @@ class _PainelPassageiroState extends State<PainelPassageiro> {
   String _idRequisicao = "";
   Position _localPassageiro;
   Map<String, dynamic> _dadosRequisicao;
+  StreamSubscription<DocumentSnapshot> _streamSubscriptionRequisicoes;
+
 
   //Controles para exibição na tela
   bool _exibirCaixaEnderecoDestino = true;
@@ -197,6 +199,7 @@ class _PainelPassageiroState extends State<PainelPassageiro> {
     passageiro.latitude = _localPassageiro.latitude;
     passageiro.longitude = _localPassageiro.longitude;
 
+
     Requisicao requisicao = Requisicao();
     requisicao.destino = destino;
     requisicao.passageiro = passageiro;
@@ -219,7 +222,16 @@ class _PainelPassageiroState extends State<PainelPassageiro> {
         .set(dadosRequisicaoAtiva);
 
     // chama metodo para alterar inferface para o status aguardando
-      _statusAguardando();
+      //_statusAguardando();
+
+      //Adicionar listener requisição
+
+    if(_streamSubscriptionRequisicoes == null){
+      //listener ainda nao criado, tem que criar
+      _adicionarListenerRequisicao(requisicao.id);
+    }
+
+
   }
 
   _alterarBotaoPrincipal(String texto, Color cor, Function funcao) {
@@ -394,7 +406,7 @@ class _PainelPassageiroState extends State<PainelPassageiro> {
 
   _adicionarListenerRequisicao(String idRequisicao) async {
     FirebaseFirestore db = FirebaseFirestore.instance;
-    await db
+    _streamSubscriptionRequisicoes = await db
         .collection("requisicoes")
         .doc(idRequisicao)
         .snapshots()
@@ -561,4 +573,12 @@ class _PainelPassageiroState extends State<PainelPassageiro> {
       ),
     );
   }
+
+  @override
+  void dispose() {
+    super.dispose();
+    _streamSubscriptionRequisicoes.cancel();
+  }
+
+
 }

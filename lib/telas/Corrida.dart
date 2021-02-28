@@ -67,15 +67,21 @@ class _CorridaState extends State<Corrida> {
                  position.latitude,
                  position.longitude);
              _localMotorista = position;
+           }else{
+             //status aguardando
+             setState(() {
+               _localMotorista = position;
+             });
+             _statusAguardando();
+
            }
 
-           setState(() {
+           /*setState(() {
              _localMotorista = position;
              if(_statusRequisicao == StatusRequisicao.AGUARDANDO){
                _statusAguardando();
              }
-
-           });
+           });*/
 
          } else{
            _recuperarUltimaLocalizacaoConhecida();
@@ -260,6 +266,31 @@ class _CorridaState extends State<Corrida> {
 
   _iniciarCorrida(){
 
+    FirebaseFirestore db = FirebaseFirestore.instance;
+    db.collection("requisicoes")
+    .doc(_idRequisicao)
+    .update({
+      "origem" : {
+        "latitude": _dadosRequisicao["motorista"]["latitude"],
+        "longitude" : _dadosRequisicao["motorista"]["longitude"]
+      },
+      "status" : StatusRequisicao.VIAGEM
+    });
+
+    String idPassageiro = _dadosRequisicao["passageiro"]["idUsuario"];
+    db.collection("requisicao_ativa")
+    .doc(idPassageiro)
+    .update({
+      "status":StatusRequisicao.VIAGEM
+    });
+
+    String idMotorista= _dadosRequisicao["motorista"]["idUsuario"];
+    db.collection("requisicao_ativa_motorista")
+        .doc(idMotorista)
+        .update({
+      "status":StatusRequisicao.VIAGEM
+    });
+
   }
 
   _movimentarCameraBounds(LatLngBounds latLngBounds) async {
@@ -315,8 +346,6 @@ class _CorridaState extends State<Corrida> {
   _aceitarCorrida() async {
     //Recuperar dados do motorista
     Usuario motorista = await UsuarioFirebase.getDadosUsuarioLogado();
-   // motorista.latitude = _dadosRequisicao["motorista"]["latitude"];
-   // motorista.longitude = _dadosRequisicao["motorista"]["longitude"];
 
     motorista.latitude = _localMotorista.latitude;
     motorista.longitude = _localMotorista.longitude;
