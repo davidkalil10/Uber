@@ -14,7 +14,7 @@ class UsuarioFirebase {
 
     FirebaseFirestore db = FirebaseFirestore.instance;
     DocumentSnapshot snapshot =
-    await db.collection("usuarios").doc(idUsuario).get();
+        await db.collection("usuarios").doc(idUsuario).get();
 
     Map<String, dynamic> dados = snapshot.data();
     String tipoUsuario = dados["tipoUsuario"];
@@ -30,17 +30,25 @@ class UsuarioFirebase {
     return usuario;
   }
 
-  static atualizarDadosLocalizacao(String idRequisicao, double lat, double lon)async{
+  static atualizarDadosLocalizacao(
+      String idRequisicao, double lat, double lon) async {
     FirebaseFirestore db = FirebaseFirestore.instance;
     Usuario passageiro = await getDadosUsuarioLogado();
     passageiro.latitude = lat;
     passageiro.longitude = lon;
 
-    db.collection("requisicoes")
-    .doc(idRequisicao).update({
-      "passageiro": passageiro.toMap()
-    });
+    if (passageiro.tipoUsuario == "passageiro") {
+      db
+          .collection("requisicoes")
+          .doc(idRequisicao)
+          .update({"passageiro": passageiro.toMap()});
+    }else if(passageiro.tipoUsuario == "motorista"){
+      db
+          .collection("requisicoes")
+          .doc(idRequisicao)
+          .update({"motorista": passageiro.toMap()});
+    }
+
 
   }
-
 }

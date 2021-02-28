@@ -26,6 +26,9 @@ class _CorridaState extends State<Corrida> {
 
   Set<Marker> _marcadores = {};
   Map<String, dynamic> _dadosRequisicao;
+  String _idRequisicao;
+  Position _localMotorista;
+  String _statusRequisicao = StatusRequisicao.AGUARDANDO;
 
 
   _onMapCreated(GoogleMapController controller) {
@@ -36,7 +39,7 @@ class _CorridaState extends State<Corrida> {
   String _textoBotao = "Aceitar corrida";
   Color _corBotao = Color(0xff1ebbd8);
   Function _funcaoBotao;
-  String _mensagemStatus;
+  String _mensagemStatus = "";
 
   _adicionarListenerLocalizacao() {
     var geolocator = GeolocatorPlatform.instance;
@@ -47,19 +50,53 @@ class _CorridaState extends State<Corrida> {
         desiredAccuracy: locationOptions.accuracy,
         distanceFilter: locationOptions.distanceFilter)
         .listen((Position position) {
+        print("requix = " + _idRequisicao.toString());
+        print("minhpos = " + _localMotorista.toString());
+        _localMotorista = position;
+        //_recuperarUltimaLocalizacaoConhecida();
 
-      if (position != null){
+       if (position!= null){
+         if (_idRequisicao != null && _idRequisicao.isNotEmpty) {
+           print("Achei a requisicao");
 
-      }
+
+           if(_statusRequisicao != StatusRequisicao.AGUARDANDO){
+             //Atualizar o local do passageiro
+             UsuarioFirebase.atualizarDadosLocalizacao(
+                 _idRequisicao,
+                 position.latitude,
+                 position.longitude);
+             _localMotorista = position;
+           }
+
+           setState(() {
+             _localMotorista = position;
+             if(_statusRequisicao == StatusRequisicao.AGUARDANDO){
+               _statusAguardando();
+             }
+
+           });
+
+         } else{
+           _recuperarUltimaLocalizacaoConhecida();
+         }
+
+       }else{
+         _recuperarUltimaLocalizacaoConhecida();
+       }
 
     });
   }
 
   _recuperarUltimaLocalizacaoConhecida() async {
     Position position = await Geolocator.getLastKnownPosition();
-
+    print("minhpos2 = " + position.toString());
     if (position != null) {
       //Atualizar localização em tempo real do motorista
+      print("minhpos2 = " + position.toString());
+      setState(() {
+        _localMotorista = position;
+      });
 
 
     }
@@ -112,10 +149,10 @@ class _CorridaState extends State<Corrida> {
 
   _adicionarListenerRequisicao() async {
     FirebaseFirestore db = FirebaseFirestore.instance;
-    String idRequisicao = _dadosRequisicao["id"];
+   // String idRequisicao = _dadosRequisicao["id"];
     await db
         .collection("requisicoes")
-        .doc(idRequisicao)
+        .doc(_idRequisicao)
         .snapshots()
         .listen((snapshot) {
 
@@ -124,9 +161,10 @@ class _CorridaState extends State<Corrida> {
         _dadosRequisicao = snapshot.data();
 
         Map<String, dynamic> dados = snapshot.data();
-        String status = dados["status"];
+        _statusRequisicao = dados["status"];
+        print("consegui consultar: "+_statusRequisicao);
 
-        switch (status) {
+        switch (_statusRequisicao) {
           case StatusRequisicao.AGUARDANDO:
             _statusAguardando();
             break;
@@ -148,12 +186,18 @@ class _CorridaState extends State<Corrida> {
       _aceitarCorrida();
     });
 
-    double motoristaLat = _dadosRequisicao["motorista"]["latitude"];
-    double motoristaLon = _dadosRequisicao["motorista"]["longitude"];
+   // double motoristaLat = _dadosRequisicao["motorista"]["latitude"];
+  //  double motoristaLon = _dadosRequisicao["motorista"]["longitude"];
+
+   // double motoristaLat = -23.5959;
+  //  double motoristaLon = -46.6872783;
+
+
+
 
     Position position = Position(
-      latitude: motoristaLat,
-      longitude:motoristaLon
+      latitude: _localMotorista.latitude,
+      longitude:_localMotorista.longitude
     );
     _exibirMarcador(
       position,
@@ -299,6 +343,9 @@ class _CorridaState extends State<Corrida> {
   @override
   void initState() {
     super.initState();
+
+    _idRequisicao = widget.idRequisicao;
+    print("recebi a req "+_idRequisicao.toString());
     //adicionar listener para mudanças na requisição
     _adicionarListenerRequisicao();
 
