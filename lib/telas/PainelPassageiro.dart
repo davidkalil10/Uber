@@ -68,11 +68,14 @@ class _PainelPassageiroState extends State<PainelPassageiro> {
         desiredAccuracy: locationOptions.accuracy,
         distanceFilter: locationOptions.distanceFilter)
         .listen((Position position) {
-      _exibirMarcadorPassageiro(position);
-      _cameraPosition = CameraPosition(
-          target: LatLng(position.latitude, position.longitude), zoom: 16);
-      _localPassageiro = position;
-      _movimentarCamera(_cameraPosition);
+
+
+      if(position !=null){
+        setState(() {
+          _localPassageiro = position;
+        });
+      }
+
     });
   }
 
@@ -214,6 +217,16 @@ class _PainelPassageiroState extends State<PainelPassageiro> {
     _alterarBotaoPrincipal("Chamar Uber", Color(0xff1ebbd8), () {
       _chamarUber();
     });
+
+    Position position = Position(
+      latitude: _localPassageiro.latitude,
+      longitude: _localPassageiro.longitude
+    );
+    _exibirMarcadorPassageiro(position);
+    CameraPosition cameraPosition = CameraPosition(
+        target: LatLng(position.latitude, position.longitude), zoom: 16);
+    _movimentarCamera(cameraPosition);
+
   }
 
   _statusAguardando() {
@@ -302,7 +315,7 @@ class _PainelPassageiroState extends State<PainelPassageiro> {
     //adicionar listener para requisição ativa
     _recuperaRequisicaoAtiva();
 
-    _recuperarUltimaLocalizacaoConhecida();
+    //_recuperarUltimaLocalizacaoConhecida();
     _adicionarListenerLocalizacao();
 
 

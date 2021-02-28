@@ -302,7 +302,7 @@ class _CorridaState extends State<Corrida> {
     //adicionar listener para mudanças na requisição
     _adicionarListenerRequisicao();
 
-    _recuperarUltimaLocalizacaoConhecida();
+    //_recuperarUltimaLocalizacaoConhecida();
     _adicionarListenerLocalizacao();
 
   }
