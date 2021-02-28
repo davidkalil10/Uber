@@ -30,19 +30,19 @@ class UsuarioFirebase {
     return usuario;
   }
 
-  static atualizarDadosLocalizacao(
-      String idRequisicao, double lat, double lon) async {
+  static atualizarDadosLocalizacao(String idRequisicao, double lat, double lon) async {
     FirebaseFirestore db = FirebaseFirestore.instance;
     Usuario passageiro = await getDadosUsuarioLogado();
     passageiro.latitude = lat;
     passageiro.longitude = lon;
+    print("Checando tipo usuario: " + passageiro.tipoUsuario);
 
-    if (passageiro.tipoUsuario == "passageiro") {
+    if (passageiro.tipoUsuario == "Passageiro") {
       db
           .collection("requisicoes")
           .doc(idRequisicao)
           .update({"passageiro": passageiro.toMap()});
-    }else if(passageiro.tipoUsuario == "motorista"){
+    }else if(passageiro.tipoUsuario == "Motorista"){
       db
           .collection("requisicoes")
           .doc(idRequisicao)

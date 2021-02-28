@@ -217,6 +217,7 @@ class _CorridaState extends State<Corrida> {
       _iniciarCorrida();
     });
 
+
     double latitudePassageiro = _dadosRequisicao["passageiro"]["latitude"];
     double longitudePassageiro = _dadosRequisicao["passageiro"]["longitude"];
 

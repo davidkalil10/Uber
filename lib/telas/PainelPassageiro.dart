@@ -78,6 +78,11 @@ class _PainelPassageiroState extends State<PainelPassageiro> {
             position.latitude,
             position.longitude);
 
+        setState(() {
+          print("novapos = " + position.toString());
+          _localPassageiro = position;
+        });
+
 
       } else if (position != null) {
         print("sumiu");
@@ -265,6 +270,97 @@ class _PainelPassageiroState extends State<PainelPassageiro> {
     _alterarBotaoPrincipal("Motorista a caminho", Colors.grey, () {
       //_cancelarUber();
     });
+
+
+    double latitudePassageiro = _dadosRequisicao["passageiro"]["latitude"];
+    double longitudePassageiro = _dadosRequisicao["passageiro"]["longitude"];
+
+    double latitudeMotorista = _dadosRequisicao["motorista"]["latitude"];
+    double longitudeMotorista = _dadosRequisicao["motorista"]["longitude"];
+
+    // print("pass: " +latitudePassageiro.toString() + "-"+longitudePassageiro.toString());
+    // print("moto: " +latitudeMotorista.toString() + "-"+longitudeMotorista.toString());
+
+
+    //Exibir dois marcadores
+    _exibirDoisMarcadores(
+        LatLng(latitudeMotorista, longitudeMotorista),
+        LatLng(latitudePassageiro, longitudePassageiro));
+
+    //latitude southwest tem que ser <= north
+    var sLat, sLon, nLat,nLon;
+
+    if(latitudeMotorista<=latitudePassageiro){
+      sLat = latitudeMotorista;
+      nLat = latitudePassageiro;
+    }else {
+      sLat = latitudePassageiro;
+      nLat = latitudeMotorista;
+    }
+    if(longitudeMotorista<=longitudePassageiro){
+      sLon = longitudeMotorista;
+      nLon = longitudePassageiro;
+    }else {
+      sLon = longitudePassageiro;
+      nLon = longitudeMotorista;
+    }
+
+    _movimentarCameraBounds(
+        LatLngBounds(
+            southwest: LatLng(sLat,sLon),
+            northeast: LatLng(nLat,nLon))
+    );
+
+  }
+
+
+  _movimentarCameraBounds(LatLngBounds latLngBounds) async {
+    GoogleMapController googleMapController = await _controller.future;
+    googleMapController
+        .animateCamera(
+        CameraUpdate.newLatLngBounds(
+            latLngBounds,
+            100)
+    );
+  }
+
+
+  _exibirDoisMarcadores(LatLng latLngMoto, LatLng latLngPass) {
+
+    double pixelRatio = MediaQuery.of(context).devicePixelRatio;
+
+    Set<Marker> _listaMarcadores = {};
+
+    BitmapDescriptor.fromAssetImage(
+        ImageConfiguration(devicePixelRatio: pixelRatio),
+        "imagens/motorista.png")
+        .then((BitmapDescriptor icone) {
+      Marker marcadorMotorista = Marker(
+          markerId: MarkerId("marcador-motorista"),
+          position: LatLng(latLngMoto.latitude, latLngMoto.longitude),
+          infoWindow: InfoWindow(title: "Motorista"),
+          icon: icone);
+      _listaMarcadores.add(marcadorMotorista);
+
+    });
+
+    BitmapDescriptor.fromAssetImage(
+        ImageConfiguration(devicePixelRatio: pixelRatio),
+        "imagens/passageiro.png")
+        .then((BitmapDescriptor icone) {
+      Marker marcadorPassageiro = Marker(
+          markerId: MarkerId("marcador-passageiro"),
+          position: LatLng(latLngPass.latitude, latLngPass.longitude),
+          infoWindow: InfoWindow(title: "Passageiro"),
+          icon: icone);
+      _listaMarcadores.add(marcadorPassageiro);
+    });
+
+    setState(() {
+      _marcadores = _listaMarcadores;
+
+    });
+
   }
 
   _cancelarUber() async {
