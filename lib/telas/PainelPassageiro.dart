@@ -20,7 +20,7 @@ class PainelPassageiro extends StatefulWidget {
 
 class _PainelPassageiroState extends State<PainelPassageiro> {
   TextEditingController _controllerDestino =
-  TextEditingController(text: "Rua fiandeiras, 929");
+      TextEditingController(text: "Rua fiandeiras, 929");
 
   List<String> itensMenu = ["Configurações", "Deslogar"];
 
@@ -32,6 +32,7 @@ class _PainelPassageiroState extends State<PainelPassageiro> {
   Set<Marker> _marcadores = {};
   String _idRequisicao = "";
   Position _localPassageiro;
+  Map<String, dynamic> _dadosRequisicao;
 
   //Controles para exibição na tela
   bool _exibirCaixaEnderecoDestino = true;
@@ -62,20 +63,32 @@ class _PainelPassageiroState extends State<PainelPassageiro> {
   _adicionarListenerLocalizacao() {
     var geolocator = GeolocatorPlatform.instance;
     var locationOptions =
-    LocationOptions(accuracy: LocationAccuracy.best, distanceFilter: 10);
+        LocationOptions(accuracy: LocationAccuracy.best, distanceFilter: 10);
     geolocator
         .getPositionStream(
-        desiredAccuracy: locationOptions.accuracy,
-        distanceFilter: locationOptions.distanceFilter)
+            desiredAccuracy: locationOptions.accuracy,
+            distanceFilter: locationOptions.distanceFilter)
         .listen((Position position) {
+      print("requi = " + _idRequisicao.toString());
+      if (_idRequisicao != null && _idRequisicao.isNotEmpty) {
+        print("Achei a requisicao");
+        //Atualizar o local do passageiro
+        UsuarioFirebase.atualizarDadosLocalizacao(
+            _idRequisicao,
+            position.latitude,
+            position.longitude);
+
+        setState(() {
+          _localPassageiro = position;
+        });
 
 
-      if(position !=null){
+      } else if (position != null) {
+        print("sumiu");
         setState(() {
           _localPassageiro = position;
         });
       }
-
     });
   }
 
@@ -104,8 +117,8 @@ class _PainelPassageiroState extends State<PainelPassageiro> {
     double pixelRatio = MediaQuery.of(context).devicePixelRatio;
 
     BitmapDescriptor.fromAssetImage(
-        ImageConfiguration(devicePixelRatio: pixelRatio),
-        "imagens/passageiro.png")
+            ImageConfiguration(devicePixelRatio: pixelRatio),
+            "imagens/passageiro.png")
         .then((BitmapDescriptor icone) {
       Marker marcadorPassageiro = Marker(
           markerId: MarkerId("marcador-passageiro"),
@@ -122,7 +135,7 @@ class _PainelPassageiroState extends State<PainelPassageiro> {
     String enderecoDestino = _controllerDestino.text;
     if (enderecoDestino.isNotEmpty) {
       List<Location> listaLocations =
-      await locationFromAddress(enderecoDestino);
+          await locationFromAddress(enderecoDestino);
 
       if (listaLocations != null && listaLocations.length > 0) {
         Location endereco = listaLocations[0];
@@ -202,6 +215,9 @@ class _PainelPassageiroState extends State<PainelPassageiro> {
         .collection("requisicao_ativa")
         .doc(passageiro.idUsuario)
         .set(dadosRequisicaoAtiva);
+
+    // chama metodo para alterar inferface para o status aguardando
+      _statusAguardando();
   }
 
   _alterarBotaoPrincipal(String texto, Color cor, Function funcao) {
@@ -219,14 +235,12 @@ class _PainelPassageiroState extends State<PainelPassageiro> {
     });
 
     Position position = Position(
-      latitude: _localPassageiro.latitude,
-      longitude: _localPassageiro.longitude
-    );
+        latitude: _localPassageiro.latitude,
+        longitude: _localPassageiro.longitude);
     _exibirMarcadorPassageiro(position);
     CameraPosition cameraPosition = CameraPosition(
         target: LatLng(position.latitude, position.longitude), zoom: 16);
     _movimentarCamera(cameraPosition);
-
   }
 
   _statusAguardando() {
@@ -234,6 +248,19 @@ class _PainelPassageiroState extends State<PainelPassageiro> {
     _alterarBotaoPrincipal("Cancelar", Colors.red, () {
       _cancelarUber();
     });
+
+    double passageiroLat = _dadosRequisicao["passageiro"]["latitude"];
+    double passageiroLon = _dadosRequisicao["passageiro"]["longitude"];
+
+
+    Position position = Position(
+        latitude: passageiroLat,
+        longitude: passageiroLon);
+    _exibirMarcadorPassageiro(position);
+    CameraPosition cameraPosition = CameraPosition(
+        target: LatLng(position.latitude, position.longitude), zoom: 16);
+    _movimentarCamera(cameraPosition);
+
   }
 
   _statusACaminho() {
@@ -246,49 +273,49 @@ class _PainelPassageiroState extends State<PainelPassageiro> {
   _cancelarUber() async {
     User firebaseUser = await UsuarioFirebase.getUsuarioAtual();
     FirebaseFirestore db = FirebaseFirestore.instance;
-    db.collection("requisicoes")
+    db
+        .collection("requisicoes")
         .doc(_idRequisicao)
-        .update({
-      "status" : StatusRequisicao.CANCELADA
-    }).then((_){
+        .update({"status": StatusRequisicao.CANCELADA}).then((_) {
       db.collection("requisicao_ativa").doc(firebaseUser.uid).delete();
       _statusUberNaoChamado();
     });
-
-
   }
 
   _recuperaRequisicaoAtiva() async {
     User firebaseUser = await UsuarioFirebase.getUsuarioAtual();
     FirebaseFirestore db = FirebaseFirestore.instance;
 
-   DocumentSnapshot documentSnapshot =  await db
-        .collection("requisicao_ativa")
-        .doc(firebaseUser.uid)
-        .get();
+    DocumentSnapshot documentSnapshot =
+        await db.collection("requisicao_ativa").doc(firebaseUser.uid).get();
 
-   if(documentSnapshot.data() != null ){
-
-     Map<String, dynamic> dados = documentSnapshot.data();
-     _idRequisicao = dados["id_requisicao"];
-     _adicionarListenerRequisicao(_idRequisicao);
-   }else {
-     _statusUberNaoChamado();
-   }
-
+    if (documentSnapshot.data() != null) {
+      Map<String, dynamic> dados = documentSnapshot.data();
+      _idRequisicao = dados["id_requisicao"];
+      print("peguei a req: "+_idRequisicao);
+      _adicionarListenerRequisicao(_idRequisicao);
+    } else {
+      _statusUberNaoChamado();
+    }
   }
 
-  _adicionarListenerRequisicao(String idRequisicao) async{
-
+  _adicionarListenerRequisicao(String idRequisicao) async {
     FirebaseFirestore db = FirebaseFirestore.instance;
     await db
         .collection("requisicoes")
-        .doc(idRequisicao).snapshots().listen((snapshot) {
-
+        .doc(idRequisicao)
+        .snapshots()
+        .listen((snapshot) {
       if (snapshot.data() != null) {
+
+        var dadosReq = snapshot.data();
+        print("achei a req: "+dadosReq["id"].toString());
+
         Map<String, dynamic> dados = snapshot.data();
+
+        _dadosRequisicao = dados;
         String status = dados["status"];
-        _idRequisicao = dados["id_requisicao"];
+        _idRequisicao = dados["id"];
 
         switch (status) {
           case StatusRequisicao.AGUARDANDO:
@@ -303,10 +330,7 @@ class _PainelPassageiroState extends State<PainelPassageiro> {
             break;
         }
       }
-
     });
-
-
   }
 
   @override
@@ -317,8 +341,6 @@ class _PainelPassageiroState extends State<PainelPassageiro> {
 
     //_recuperarUltimaLocalizacaoConhecida();
     _adicionarListenerLocalizacao();
-
-
   }
 
   @override
@@ -382,7 +404,7 @@ class _PainelPassageiroState extends State<PainelPassageiro> {
                                   hintText: "Meu Local",
                                   border: InputBorder.none,
                                   contentPadding:
-                                  EdgeInsets.only(left: 15, top: 0)),
+                                      EdgeInsets.only(left: 15, top: 0)),
                             ),
                           ),
                         )),
@@ -415,7 +437,7 @@ class _PainelPassageiroState extends State<PainelPassageiro> {
                                   hintText: "Digite o destino",
                                   border: InputBorder.none,
                                   contentPadding:
-                                  EdgeInsets.only(left: 15, top: 0)),
+                                      EdgeInsets.only(left: 15, top: 0)),
                             ),
                           ),
                         )),
