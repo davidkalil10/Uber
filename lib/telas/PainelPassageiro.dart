@@ -78,16 +78,13 @@ class _PainelPassageiroState extends State<PainelPassageiro> {
             position.latitude,
             position.longitude);
 
-        setState(() {
-          _localPassageiro = position;
-        });
-
 
       } else if (position != null) {
         print("sumiu");
         setState(() {
           _localPassageiro = position;
         });
+        _statusUberNaoChamado(); //adicionado para andar no mapa antes da req
       }
     });
   }
