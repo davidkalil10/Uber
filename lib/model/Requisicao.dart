@@ -22,6 +22,8 @@ class Requisicao{
       "email": this.passageiro.email,
       "tipoUsuario": this.passageiro.tipoUsuario,
       "idUsuario": this.passageiro.idUsuario,
+      "latitude": this.passageiro.latitude,
+      "longitude": this.passageiro.longitude,
     };
 
     Map<String, dynamic> dadosDestino ={
