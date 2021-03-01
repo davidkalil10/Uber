@@ -178,6 +178,7 @@ class _CorridaState extends State<Corrida> {
             _statusACaminho();
             break;
           case StatusRequisicao.VIAGEM:
+            _statusEmViagem();
             break;
           case StatusRequisicao.FINALIZADA:
             break;
@@ -260,6 +261,57 @@ class _CorridaState extends State<Corrida> {
       LatLngBounds(
           southwest: LatLng(sLat,sLon),
           northeast: LatLng(nLat,nLon))
+    );
+
+  }
+  _finalizarCorrida(){
+
+  }
+
+  _statusEmViagem() {
+    _mensagemStatus = "Em viagem";
+
+    _alterarBotaoPrincipal("Finalizar Corrida", Color(0xff1ebbd8), (){
+      _finalizarCorrida();
+    });
+
+
+    double latitudeDestino = _dadosRequisicao["destino"]["latitude"];
+    double longitudeDestino = _dadosRequisicao["destino"]["longitude"];
+
+    double latitudeOrigem = _dadosRequisicao["motorista"]["latitude"];
+    double longitudeOrigem = _dadosRequisicao["motorista"]["longitude"];
+
+    // print("pass: " +latitudePassageiro.toString() + "-"+longitudePassageiro.toString());
+    // print("moto: " +latitudeMotorista.toString() + "-"+longitudeMotorista.toString());
+
+
+    //Exibir dois marcadores
+    _exibirDoisMarcadores(
+        LatLng(latitudeOrigem, longitudeOrigem),
+        LatLng(latitudeDestino, longitudeDestino));
+
+    //latitude southwest tem que ser <= north
+    var sLat, sLon, nLat,nLon;
+
+    if(latitudeOrigem<=latitudeDestino){
+      sLat = latitudeOrigem;
+      nLat = latitudeDestino;
+    }else {
+      sLat = latitudeDestino;
+      nLat = latitudeOrigem;
+    }
+    if(longitudeOrigem<=longitudeDestino){
+      sLon = longitudeOrigem;
+      nLon = longitudeDestino;
+    }else {
+      sLon = longitudeDestino;
+      nLon = longitudeOrigem;
+    }
+    _movimentarCameraBounds(
+        LatLngBounds(
+            southwest: LatLng(sLat,sLon),
+            northeast: LatLng(nLat,nLon))
     );
 
   }
