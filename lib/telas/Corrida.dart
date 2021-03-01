@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:uber/model/Marcador.dart';
 import 'package:uber/model/Usuario.dart';
 import 'package:uber/util/StatusRequisicao.dart';
 import 'package:uber/util/UsuarioFirebase.dart';
@@ -231,37 +232,19 @@ class _CorridaState extends State<Corrida> {
     double latitudeMotorista = _dadosRequisicao["motorista"]["latitude"];
     double longitudeMotorista = _dadosRequisicao["motorista"]["longitude"];
 
-   // print("pass: " +latitudePassageiro.toString() + "-"+longitudePassageiro.toString());
-   // print("moto: " +latitudeMotorista.toString() + "-"+longitudeMotorista.toString());
+    Marcador marcadorOrigem = Marcador(
+        LatLng(latitudeMotorista,longitudeMotorista),
+        "imagens/motorista.png",
+        "Local Motorista");
 
+    Marcador marcadorDestino = Marcador(
+        LatLng(latitudePassageiro,longitudePassageiro),
+        "imagens/passageiro.png",
+        "Local Passageiro");
 
-    //Exibir dois marcadores
-    _exibirDoisMarcadores(
-        LatLng(latitudeMotorista, longitudeMotorista),
-        LatLng(latitudePassageiro, longitudePassageiro));
-
-    //latitude southwest tem que ser <= north
-    var sLat, sLon, nLat,nLon;
-
-    if(latitudeMotorista<=latitudePassageiro){
-      sLat = latitudeMotorista;
-      nLat = latitudePassageiro;
-    }else {
-      sLat = latitudePassageiro;
-      nLat = latitudeMotorista;
-    }
-    if(longitudeMotorista<=longitudePassageiro){
-      sLon = longitudeMotorista;
-      nLon = longitudePassageiro;
-    }else {
-      sLon = longitudePassageiro;
-      nLon = longitudeMotorista;
-    }
-    _movimentarCameraBounds(
-      LatLngBounds(
-          southwest: LatLng(sLat,sLon),
-          northeast: LatLng(nLat,nLon))
-    );
+    _exibirCentralizarDoisMarcadores(
+        marcadorOrigem,
+        marcadorDestino);
 
   }
   _finalizarCorrida(){
@@ -282,14 +265,33 @@ class _CorridaState extends State<Corrida> {
     double latitudeOrigem = _dadosRequisicao["motorista"]["latitude"];
     double longitudeOrigem = _dadosRequisicao["motorista"]["longitude"];
 
-    // print("pass: " +latitudePassageiro.toString() + "-"+longitudePassageiro.toString());
-    // print("moto: " +latitudeMotorista.toString() + "-"+longitudeMotorista.toString());
 
+    Marcador marcadorOrigem = Marcador(
+        LatLng(latitudeOrigem,longitudeOrigem),
+        "imagens/motorista.png",
+        "Local Motorista");
+
+    Marcador marcadorDestino = Marcador(
+        LatLng(latitudeDestino,longitudeDestino),
+        "imagens/destino.png",
+        "Local Destino");
+
+    _exibirCentralizarDoisMarcadores(
+        marcadorOrigem,
+        marcadorDestino);
+
+  }
+
+  _exibirCentralizarDoisMarcadores(Marcador marcadorOrigem, Marcador marcadorDestino){
+
+    double latitudeOrigem = marcadorOrigem.local.latitude;
+    double longitudeOrigem = marcadorOrigem.local.longitude;
+
+    double latitudeDestino = marcadorDestino.local.latitude;
+    double longitudeDestino = marcadorDestino.local.longitude;
 
     //Exibir dois marcadores
-    _exibirDoisMarcadores(
-        LatLng(latitudeOrigem, longitudeOrigem),
-        LatLng(latitudeDestino, longitudeDestino));
+    _exibirDoisMarcadores(marcadorOrigem,marcadorDestino);
 
     //latitude southwest tem que ser <= north
     var sLat, sLon, nLat,nLon;
@@ -313,6 +315,7 @@ class _CorridaState extends State<Corrida> {
             southwest: LatLng(sLat,sLon),
             northeast: LatLng(nLat,nLon))
     );
+
 
   }
 
@@ -357,35 +360,39 @@ class _CorridaState extends State<Corrida> {
 
 
 
-  _exibirDoisMarcadores(LatLng latLngMoto, LatLng latLngPass) {
+  _exibirDoisMarcadores(Marcador marcadorOrigem, Marcador marcadorDestino) {
 
     double pixelRatio = MediaQuery.of(context).devicePixelRatio;
+
+    LatLng latLngOrigem = marcadorOrigem.local;
+    LatLng latLngDestino = marcadorDestino.local;
+
 
     Set<Marker> _listaMarcadores = {};
 
     BitmapDescriptor.fromAssetImage(
         ImageConfiguration(devicePixelRatio: pixelRatio),
-        "imagens/motorista.png")
+        marcadorOrigem.caminhoImagem)
         .then((BitmapDescriptor icone) {
-      Marker marcadorMotorista = Marker(
-          markerId: MarkerId("marcador-motorista"),
-          position: LatLng(latLngMoto.latitude, latLngMoto.longitude),
-          infoWindow: InfoWindow(title: "Motorista"),
+      Marker mOrigem = Marker(
+          markerId: MarkerId(marcadorOrigem.caminhoImagem),
+          position: latLngOrigem,
+          infoWindow: InfoWindow(title: marcadorOrigem.titulo),
           icon: icone);
-      _listaMarcadores.add(marcadorMotorista);
+      _listaMarcadores.add(mOrigem);
 
     });
 
     BitmapDescriptor.fromAssetImage(
         ImageConfiguration(devicePixelRatio: pixelRatio),
-        "imagens/passageiro.png")
+        marcadorDestino.caminhoImagem)
         .then((BitmapDescriptor icone) {
-      Marker marcadorPassageiro = Marker(
-          markerId: MarkerId("marcador-passageiro"),
-          position: LatLng(latLngPass.latitude, latLngPass.longitude),
-          infoWindow: InfoWindow(title: "Passageiro"),
+      Marker mDestino = Marker(
+          markerId: MarkerId(marcadorDestino.caminhoImagem),
+          position: latLngDestino,
+          infoWindow: InfoWindow(title: marcadorDestino.titulo),
           icon: icone);
-      _listaMarcadores.add(marcadorPassageiro);
+      _listaMarcadores.add(mDestino);
     });
 
     setState(() {
